@@ -1,0 +1,72 @@
+version: '3.8'
+
+services:
+  service1:
+    build: ./services/service1
+    ports:
+      - "5001:5001"
+    networks:
+      - loadbalancer
+    depends_on:
+      - influxdb
+
+  service2:
+    build: ./services/service2
+    ports:
+      - "5002:5002"
+    networks:
+      - loadbalancer
+    depends_on:
+      - influxdb
+
+  nginx:
+    image: nginx:latest
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf
+    depends_on:
+      - service1
+      - service2
+    networks:
+      - loadbalancer
+
+  influxdb:
+    image: influxdb:1.8
+    ports:
+      - "8086:8086"
+    volumes:
+      - ./monitoring/influxdb:/var/lib/influxdb
+    environment:
+      - INFLUXDB_DB=load_balancer_metrics
+    networks:
+      - loadbalancer
+
+  grafana:
+    image: grafana/grafana
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./monitoring/grafana:/var/lib/grafana
+    depends_on:
+      - influxdb
+    networks:
+      - loadbalancer
+
+  locust:
+    build: ./locust
+    ports:
+      - "8089:8089"  # Locust Web UI
+    depends_on:
+      - nginx
+    command: >
+      -f /mnt/locust/locustfile.py
+      --host http://nginx
+    networks:
+      - loadbalancer
+
+networks:
+  loadbalancer:
+
+volumes:
+  shared_data:
