@@ -1,70 +1,78 @@
-# Load Balancing Project
+# AI Load Balancer 🚀
+An intelligent load balancer using machine learning for dynamic traffic distribution based on system metrics and workload prediction.
 
-## Overview
-This project implements a **Load Balancing** mechanism to efficiently distribute incoming requests across multiple resources to improve performance, reliability, and resource utilization. The system ensures that no single server is overwhelmed while others remain underutilized.
+---
 
-## Features
-- **Dynamic Load Distribution**: Balances traffic across multiple servers based on real-time metrics.
-- **Scalability**: Supports scaling up or down based on workload demands.
-- **Failure Handling**: Detects and reroutes traffic from failed nodes.
-- **Performance Optimization**: Reduces response time and prevents bottlenecks.
-- **Algorithm Support**: Implements different load balancing strategies.
+## ✅ Project Stages Completed
 
-## Technologies Used
-- **Programming Language**: Python
-- **Frameworks**: Flask (for simulating servers)
-- **Networking**: Nginx/HAProxy (for real-world implementation)
-- **Monitoring Tools**: Prometheus, Grafana (optional for visualization)
+### 1. **Environment Setup**
+- Docker & Docker Compose installed
+- Project directory structure created
+- Shared volumes for metrics logging
 
-## Installation & Setup
-### Prerequisites
-- Python 3.x
-- pip (Python package manager)
+### 2. **Services**
+- Two Flask microservices (`service1` & `service2`)
+  - Expose `/` and `/process` endpoints
+  - Gather system metrics via psutil
+  - Log to InfluxDB and CSV (`/shared_data/metrics.csv`)
 
-### Steps to Run
-1. Clone the repository:
-   ```bash
-   git clone https://github.com/your-repo/load-balancing.git
-   cd load-balancing
-   ```
-2. Set up a virtual environment (optional but recommended):
-   ```bash
-   python -m venv venv
-   source venv/bin/activate  # Mac/Linux
-   venv\Scripts\activate  # Windows
-   ```
-3. Install dependencies:
-   ```bash
-   pip install -r requirements.txt
-   ```
-4. Start the simulated servers:
-   ```bash
-   python server.py 5001 &
-   python server.py 5002 &
-   ```
-5. Run the Load Balancer:
-   ```bash
-   python load_balancer.py
-   ```
+### 3. **Load Balancer**
+- NGINX configured for round-robin traffic
+- Load testing through Locust
+- Grafana dashboards for live monitoring
 
-## Project Structure
-```
-load-balancing/
-│── load_balancer.py       # Main script
-│── server.py              # Simulated backend servers
-│── config.json            # Config for servers & strategy
-│── requirements.txt       # Dependencies
-│── README.md              # Documentation
-│── venv/                  # Virtual environment (optional)
-```
+### 4. **Load Testing & Data Collection**
+- Locust scenarios (light, medium, heavy load)
+- Headless execution for automation & data collection
+- CSV reports from Locust (`results/`)
+- InfluxDB time-series data stored (viewable via Grafana)
 
-## Usage
-- Modify `config.json` to set the number of servers and balancing strategy.
-- Monitor performance via logs or integrated visualization tools.
+---
 
-## Future Improvements
-- Support for AI-based predictive load balancing.
-- Integration with cloud-based auto-scaling.
-- Advanced monitoring and reporting tools.
+## ⚙️ Docker Compose Services
+- **Service1 & Service2** (Flask apps)
+- **InfluxDB** (Metrics database)
+- **Grafana** (Dashboard visualization)
+- **NGINX** (Load balancing)
+- **Locust** (Load generation)
+
+---
+
+## 🚀 Load Testing Commands
+
+```powershell
+# Light Load
+docker-compose run --rm locust `
+  -f /mnt/locust/locustfile.py `
+  --host http://nginx `
+  --headless `
+  -u 50 `
+  -r 5 `
+  --run-time 15m `
+  --csv /mnt/locust/results/light_load `
+  --loglevel INFO
+
+# Medium Load
+docker-compose run --rm locust `
+  -f /mnt/locust/locustfile.py `
+  --host http://nginx `
+  --headless `
+  -u 100 `
+  -r 10 `
+  --run-time 20m `
+  --csv /mnt/locust/results/medium_load `
+  --loglevel INFO
+
+# Heavy Load
+docker-compose run --rm locust `
+  -f /mnt/locust/locustfile.py `
+  --host http://nginx `
+  --headless `
+  -u 200 `
+  -r 20 `
+  --run-time 30m `
+  --csv /mnt/locust/results/heavy_load `
+  --loglevel INFO
+
 
 

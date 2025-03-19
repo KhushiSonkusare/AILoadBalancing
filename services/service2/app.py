@@ -1,4 +1,4 @@
-from flask import Flask, jsonify
+from flask import Flask, jsonify, request
 import psutil
 import time
 from influxdb import InfluxDBClient
@@ -7,6 +7,10 @@ from datetime import datetime
 import os
 import platform
 import random
+import logging
+
+# Setup logging
+logging.basicConfig(level=logging.INFO)
 
 app = Flask(__name__)
 client = InfluxDBClient(host='influxdb', port=8086)
@@ -23,42 +27,25 @@ def log_to_csv(data):
         writer.writerow(data)
 
 def get_additional_metrics():
-    # Disk usage
     disk_usage = psutil.disk_usage('/')
-    
-    # Disk I/O
     disk_io = psutil.disk_io_counters()
-    
-    # Network I/O
     net_io = psutil.net_io_counters()
-    
-    # Uptime (seconds since boot)
     uptime = time.time() - psutil.boot_time()
-    
-    # Number of processes
     process_count = len(psutil.pids())
-    
-    # Thread count (of current process)
     thread_count = psutil.Process().num_threads()
     
-    # Temperature (if available)
     temperatures = psutil.sensors_temperatures() if hasattr(psutil, 'sensors_temperatures') else {}
-    cpu_temp = None
+    cpu_temp = 0.0
     if temperatures:
         for name, entries in temperatures.items():
             if entries:
                 cpu_temp = entries[0].current
                 break
     
-    # Load averages (only on Unix)
+    load_avg_1 = load_avg_5 = load_avg_15 = 0.0
     if hasattr(os, 'getloadavg'):
         load_avg_1, load_avg_5, load_avg_15 = os.getloadavg()
-    else:
-        load_avg_1 = load_avg_5 = load_avg_15 = 0.0
-    
-    # Health status (random for simulation; you can base this on thresholds)
-    health_status = random.choice(["Healthy", "Warning", "Critical"])
-    
+
     return {
         "disk_usage_percent": disk_usage.percent,
         "disk_read_bytes": disk_io.read_bytes,
@@ -68,12 +55,19 @@ def get_additional_metrics():
         "uptime_seconds": uptime,
         "process_count": process_count,
         "thread_count": thread_count,
-        "cpu_temperature": cpu_temp if cpu_temp else 0.0,
+        "cpu_temperature": cpu_temp,
         "load_avg_1m": load_avg_1,
         "load_avg_5m": load_avg_5,
-        "load_avg_15m": load_avg_15,
-        "health_status": health_status
+        "load_avg_15m": load_avg_15
     }
+
+def determine_health(cpu, memory, response_time):
+    if cpu < 50 and memory < 60 and response_time < 500:
+        return "Healthy"
+    elif cpu < 80 and memory < 80 and response_time < 1000:
+        return "Warning"
+    else:
+        return "Critical"
 
 @app.route('/')
 def home():
@@ -83,15 +77,24 @@ def home():
 def process_request():
     start_time = time.time()
 
-    # Simulate processing delay
-    time.sleep(random.uniform(0.2, 1.0))  # More realistic delay
+    # ✅ Get query params
+    delay = float(request.args.get('delay', 0.5))  # default to 0.5 seconds
+    request_type = request.args.get('type', 'standard')
 
-    cpu = psutil.cpu_percent(interval=1)
+    # Simulate variable delay
+    if request_type == 'heavy':
+        delay *= 2
+    elif request_type == 'light':
+        delay /= 2
+
+    time.sleep(delay)
+
+    cpu = psutil.cpu_percent(interval=0.1)
     memory = psutil.virtual_memory().percent
     active_connections = len(psutil.net_connections())
     response_time = (time.time() - start_time) * 1000  # in ms
-    
-    # Gather additional metrics
+
+    health_status = determine_health(cpu, memory, response_time)
     additional_metrics = get_additional_metrics()
 
     data = {
@@ -100,26 +103,52 @@ def process_request():
         "memory": memory,
         "active_connections": active_connections,
         "response_time": response_time,
+        "health_status": health_status,
+        "delay_used": delay,
+        "request_type": request_type,
         **additional_metrics
     }
 
-    # Send to InfluxDB
     json_body = [
         {
             "measurement": "app_metrics",
-            "tags": {"app": "service2"},  # Change to service2 in service2 app
+            "tags": {"app": "service2"},  # ✅ Change to service2 in service2 app
             "fields": data
         }
     ]
     client.write_points(json_body)
-
-    # Log to CSV
     log_to_csv(data)
 
+    logging.info(f"Processed /process with delay={delay}, type={request_type}")
     return jsonify({
-        "message": "Processed by Service 2",
+        "message": f"Processed by Service 2 (delay={delay}, type={request_type})",
         **data
     })
 
+@app.route('/submit', methods=['POST'])
+def submit_data():
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({"error": "Invalid JSON payload"}), 400
+
+        time.sleep(random.uniform(0.1, 0.5))
+        logging.info(f"Received POST data: {data}")
+
+        response_data = {
+            "timestamp": datetime.utcnow().isoformat(),
+            "received_data": data
+        }
+
+        return jsonify({
+            "message": "Data submitted successfully!",
+            **response_data
+        }), 201
+
+    except Exception as e:
+        logging.error(f"Error in /submit: {str(e)}")
+        return jsonify({"error": str(e)}), 500
+
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5002)
+    app.run(host='0.0.0.0', port=5001, threaded=True)
+  # ✅ Change to port 5002 for service2

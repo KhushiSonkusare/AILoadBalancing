@@ -1,0 +1,18 @@
+Method,Name,Error,Occurrences
+GET,/process?delay=2&type=light,CatchResponseError('Processing failed! Status: 0'),324
+GET,/process?badparam=,CatchResponseError('Expected 400/404 but got 0'),281
+GET,/non-existent?badparam=,CatchResponseError('Expected 400/404 but got 0'),316
+GET,/process?delay=0.1&type=heavy,CatchResponseError('Processing failed! Status: 0'),301
+GET,/process?delay=0.5&type=standard,CatchResponseError('Processing failed! Status: 0'),320
+GET,/process?badparam=,CatchResponseError('Expected 400/404 but got 200'),202
+GET,/process?delay=1&type=standard,CatchResponseError('Processing failed! Status: 0'),290
+GET,/process?delay=0.5&type=light,CatchResponseError('Processing failed! Status: 0'),341
+GET,/,CatchResponseError('Failed home page! Status: 0'),1878
+POST,/submit,CatchResponseError('POST failed! Status: 0'),639
+GET,/process?delay=1&type=heavy,CatchResponseError('Processing failed! Status: 0'),338
+GET,/process?delay=0.5&type=heavy,CatchResponseError('Processing failed! Status: 0'),279
+GET,/process?delay=1&type=light,CatchResponseError('Processing failed! Status: 0'),339
+GET,/process?delay=2&type=standard,CatchResponseError('Processing failed! Status: 0'),311
+GET,/process?delay=0.1&type=standard,CatchResponseError('Processing failed! Status: 0'),316
+GET,/process?delay=2&type=heavy,CatchResponseError('Processing failed! Status: 0'),309
+GET,/process?delay=0.1&type=light,CatchResponseError('Processing failed! Status: 0'),285
